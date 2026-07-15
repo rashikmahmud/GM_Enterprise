@@ -656,3 +656,58 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ============================= */
+/* SHIPPING MAP OVERRIDES         */
+/* Paste these at the very BOTTOM of your existing globals.css */
+/* ============================= */
+
+/* Custom hover tooltip on vessel icons — dark, minimal, matches site theme */
+.gm-vessel-tooltip.leaflet-tooltip {
+  background: rgba(11, 18, 32, 0.95);
+  color: #f8fafc;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  font-family: Inter, Arial, sans-serif;
+  backdrop-filter: blur(6px);
+}
+
+/* Tooltip arrow color — match the border */
+.gm-vessel-tooltip.leaflet-tooltip-top::before {
+  border-top-color: rgba(34, 211, 238, 0.4);
+}
+
+/* Popups (click info boxes) — also themed to match the site */
+.leaflet-popup-content-wrapper {
+  background: rgba(11, 18, 32, 0.97);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.leaflet-popup-tip {
+  background: rgba(11, 18, 32, 0.97);
+}
+
+.leaflet-popup-close-button {
+  color: #cbd5e1 !important;
+}
+
+/* Slight pulse on vessel icons that are moving — subtle, catches the eye */
+.gm-vessel-marker {
+  transition: transform 0.2s ease;
+}
+
+.gm-vessel-marker:hover {
+  transform: scale(1.4);
+  z-index: 1000 !important;
+}
