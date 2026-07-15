@@ -41,16 +41,12 @@ const hqIcon = L.divIcon({
   iconAnchor: [11, 11],
 });
 
-// ─────────────────────────────────────────────────────────────
-// Vessel icon — an SVG arrow that rotates to match the ship's heading (COG).
-// Moving ships get bright cyan; anchored/very-slow ships get muted amber.
-// ─────────────────────────────────────────────────────────────
+// Vessel icon — arrow that rotates with heading (COG). Cyan when moving, amber when idle.
 function makeVesselIcon(cog: number, moving: boolean) {
-  const fill = moving ? "#22d3ee" : "#f59e0b"; // cyan when moving, amber when idle
+  const fill = moving ? "#22d3ee" : "#f59e0b";
   const stroke = moving ? "#0e7490" : "#78350f";
   const glow = moving ? "rgba(34, 211, 238, 0.5)" : "rgba(245, 158, 11, 0.4)";
 
-  // Arrow SVG (points up by default → rotated by `cog` degrees)
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
          style="transform: rotate(${cog}deg); transform-origin: center; display: block;
@@ -106,12 +102,19 @@ type Vessel = {
   lastUpdate: number;
 };
 
-// Bay of Bengal + surrounding waters — bounding box for AIS subscription.
+// ─────────────────────────────────────────────────────────────
+// WIDE COVERAGE BOUNDING BOX
+// Persian Gulf → Indian Ocean → Malacca Strait → South China Sea.
+// Captures the world's busiest shipping corridors relevant to GM Enterprise.
 // Format: [[SW-lat, SW-lon], [NE-lat, NE-lon]]
-const BAY_OF_BENGAL_BBOX: [[number, number], [number, number]] = [
-  [5, 80],
-  [25, 100],
+// ─────────────────────────────────────────────────────────────
+const AIS_BBOX: [[number, number], [number, number]] = [
+  [-10, 40],   // SW corner — south of equator, western Indian Ocean
+  [40, 130],   // NE corner — north into China / South China Sea
 ];
+
+// Keep stale vessels around for 15 minutes so the map feels populated
+const STALE_CUTOFF_MS = 15 * 60 * 1000;
 
 export default function ShippingMap() {
   const [vessels, setVessels] = useState<Map<number, Vessel>>(new Map());
@@ -127,7 +130,11 @@ export default function ShippingMap() {
       return;
     }
 
-    // Helper: parse an AIS message (already a JS object) and update state
+    // Guard against React Strict Mode double-invoke in dev
+    if (socketRef.current && socketRef.current.readyState <= 1) {
+      return;
+    }
+
     const handleMessage = (msg: any) => {
       if (msg.MessageType !== "PositionReport") return;
 
@@ -152,21 +159,14 @@ export default function ShippingMap() {
       });
     };
 
-    // Guard against React Strict Mode's double-invoke in dev — if we already
-    // have a live socket from a previous mount, don't open another one.
-    if (socketRef.current && socketRef.current.readyState <= 1) {
-      return;
-    }
-
-    // Open the WebSocket to AISstream.io
     const socket = new WebSocket("wss://stream.aisstream.io/v0/stream");
     socketRef.current = socket;
 
     socket.onopen = () => {
       console.log("[ShippingMap] AIS stream connected ✅");
       const subscription = {
-        APIKey: apiKey, // NOTE: AISstream expects "APIKey" (capital K), not "Apikey"
-        BoundingBoxes: [BAY_OF_BENGAL_BBOX],
+        APIKey: apiKey,
+        BoundingBoxes: [AIS_BBOX],
         FilterMessageTypes: ["PositionReport"],
       };
       socket.send(JSON.stringify(subscription));
@@ -176,9 +176,6 @@ export default function ShippingMap() {
     socket.onmessage = async (event) => {
       try {
         let text: string;
-
-        // AISstream can send data as either a string or a Blob depending on
-        // the browser. Handle both cases safely.
         if (typeof event.data === "string") {
           text = event.data;
         } else if (event.data instanceof Blob) {
@@ -186,13 +183,8 @@ export default function ShippingMap() {
         } else if (event.data instanceof ArrayBuffer) {
           text = new TextDecoder().decode(event.data);
         } else {
-          console.warn(
-            "[ShippingMap] Unknown message type from AIS stream:",
-            event.data
-          );
           return;
         }
-
         const msg = JSON.parse(text);
         handleMessage(msg);
       } catch (err) {
@@ -200,9 +192,6 @@ export default function ShippingMap() {
       }
     };
 
-    // WebSocket `onerror` events are intentionally opaque ({}) for security.
-    // We downgrade to `console.warn` so Next.js's dev overlay stops flagging it.
-    // The real diagnostic info comes from `onclose` below.
     socket.onerror = () => {
       console.warn("[ShippingMap] AIS stream reported an error (details in close event)");
     };
@@ -211,21 +200,16 @@ export default function ShippingMap() {
       console.log(
         `[ShippingMap] AIS stream closed → code=${event.code}, reason="${event.reason || "(none)"}", wasClean=${event.wasClean}`
       );
-      // Common close codes:
-      //   1000 = normal
-      //   1006 = abnormal (network dropped)
-      //   1008 = policy violation (usually invalid API key or bad subscription)
-      //   1011 = server error
       if (event.code === 1008) {
         console.warn(
-          "[ShippingMap] Close code 1008 usually means an invalid API key or a malformed subscription. Double-check .env.local."
+          "[ShippingMap] Close code 1008 usually means an invalid API key or malformed subscription."
         );
       }
     };
 
-    // Periodically drop vessels we haven't heard from in 5+ minutes
+    // Drop vessels we haven't heard from in a while
     const staleInterval = setInterval(() => {
-      const cutoff = Date.now() - 5 * 60 * 1000;
+      const cutoff = Date.now() - STALE_CUTOFF_MS;
       setVessels((prev) => {
         const next = new Map<number, Vessel>();
         prev.forEach((v, k) => {
@@ -243,8 +227,7 @@ export default function ShippingMap() {
 
   const vesselArray = Array.from(vessels.values());
 
-  // Small helper component: adds a "🎯 Fit to vessels" button that zooms
-  // the map to include every current vessel + the HQ port.
+  // "Fit to vessels" button — zooms map to include HQ + all live ships
   function FitToVesselsButton() {
     const map = useMap();
     const handleClick = () => {
@@ -286,7 +269,7 @@ export default function ShippingMap() {
   return (
     <MapContainer
       center={[15, 88]}
-      zoom={5}
+      zoom={4}
       minZoom={2}
       maxZoom={12}
       scrollWheelZoom={false}
@@ -338,7 +321,7 @@ export default function ShippingMap() {
         </Marker>
       ))}
 
-      {/* Live vessel counter overlay */}
+      {/* Live vessel counter */}
       <div
         style={{
           position: "absolute",
@@ -359,19 +342,17 @@ export default function ShippingMap() {
         🚢 {vesselArray.length} vessels live
       </div>
 
-      {/* "Fit to vessels" button */}
       <FitToVesselsButton />
 
-      {/* LIVE VESSELS — rotating arrow icons with hover tooltips */}
+      {/* LIVE VESSELS — rotating arrow icons */}
       {vesselArray.map((v) => {
-        const moving = v.sog >= 0.5; // knots — below this treat as anchored
+        const moving = v.sog >= 0.5;
         return (
           <Marker
             key={v.mmsi}
             position={[v.lat, v.lon]}
             icon={makeVesselIcon(v.cog, moving)}
           >
-            {/* Hover tooltip — appears on mouseover, no click needed */}
             <Tooltip
               direction="top"
               offset={[0, -8]}
@@ -384,30 +365,18 @@ export default function ShippingMap() {
               </div>
             </Tooltip>
 
-            {/* Click popup — richer detail */}
             <Popup>
               <div style={{ minWidth: 180 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
                   🚢 {v.name}
                 </div>
                 <div style={{ fontSize: 12, lineHeight: 1.6 }}>
-                  <div>
-                    <strong>MMSI:</strong> {v.mmsi}
-                  </div>
-                  <div>
-                    <strong>Speed:</strong> {v.sog.toFixed(1)} knots
-                  </div>
-                  <div>
-                    <strong>Heading:</strong> {v.cog.toFixed(0)}°
-                  </div>
+                  <div><strong>MMSI:</strong> {v.mmsi}</div>
+                  <div><strong>Speed:</strong> {v.sog.toFixed(1)} knots</div>
+                  <div><strong>Heading:</strong> {v.cog.toFixed(0)}°</div>
                   <div>
                     <strong>Status:</strong>{" "}
-                    <span
-                      style={{
-                        color: moving ? "#0891b2" : "#b45309",
-                        fontWeight: 600,
-                      }}
-                    >
+                    <span style={{ color: moving ? "#0891b2" : "#b45309", fontWeight: 600 }}>
                       {moving ? "Underway" : "Anchored / Idle"}
                     </span>
                   </div>
