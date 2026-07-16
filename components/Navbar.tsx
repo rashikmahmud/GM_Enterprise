@@ -15,19 +15,24 @@ export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Close the menu whenever the route changes (user tapped a link)
-  // Close on Escape key
+  // 1. Close the menu whenever the route changes (user tapped a link)
   useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
+
+  // 2. Lock body scroll while the mobile menu is open
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.classList.add("menu-open");
+    } else {
+      document.body.classList.remove("menu-open");
+    }
+    return () => {
+      document.body.classList.remove("menu-open");
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  // Close on Escape key
-  // Close on Escape key
+  // 3. Close on Escape key
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -105,6 +110,12 @@ export default function Navbar() {
         }}
       >
         <div className="mobile-menu__panel">
+          {/* Small brand mark inside the menu for premium feel */}
+          <div className="mobile-menu__brand">
+            <div className="mobile-menu__brand-mark">GM</div>
+            <div className="mobile-menu__brand-name">GM Enterprise</div>
+          </div>
+
           <ul className="mobile-menu__list">
             {links.map(({ href, label }) => {
               const isActive =
@@ -131,10 +142,7 @@ export default function Navbar() {
           </Link>
 
           <div className="mobile-menu__footer">
-            <p>C&amp;F &amp; Shipping Agent</p>
-            <p style={{ opacity: 0.6, fontSize: 12, marginTop: 4 }}>
-              &copy; {new Date().getFullYear()} GM Enterprise
-            </p>
+            <p>© {new Date().getFullYear()} · All rights reserved</p>
           </div>
         </div>
       </div>

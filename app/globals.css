@@ -757,15 +757,20 @@ textarea {
 }
 
 /* ============================= */
-/* HAMBURGER MENU (final)         */
+/* HAMBURGER MENU (final premium) */
+/* ============================= */
+/* PASTE THIS AT THE VERY BOTTOM of your existing app/globals.css     */
+/* FIRST: delete every previous hamburger/nav-toggle/mobile-menu rule */
+/* you added — otherwise old styles will fight the new ones.          */
 /* ============================= */
 
+/* Hamburger button (visible only on mobile) */
 .nav-toggle {
   display: none;
   flex-direction: column;
   justify-content: space-between;
-  width: 28px;
-  height: 20px;
+  width: 24px;
+  height: 16px;
   padding: 0;
   background: transparent;
   border: none;
@@ -776,43 +781,41 @@ textarea {
 
 .nav-toggle span {
   display: block;
-  height: 2.5px;
+  height: 2px;
   width: 100%;
   background: var(--text);
   border-radius: 2px;
-  transition: transform 0.3s, opacity 0.2s, background 0.2s;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s, background 0.2s;
   transform-origin: center;
 }
 
 .nav-toggle.is-open span:nth-child(1) {
-  transform: translateY(8.75px) rotate(45deg);
+  transform: translateY(7px) rotate(45deg);
   background: var(--primary);
 }
 .nav-toggle.is-open span:nth-child(2) {
   opacity: 0;
 }
 .nav-toggle.is-open span:nth-child(3) {
-  transform: translateY(-8.75px) rotate(-45deg);
+  transform: translateY(-7px) rotate(-45deg);
   background: var(--primary);
 }
 
-/* Full-screen opaque overlay — nothing can bleed through */
+/* Full-screen opaque overlay */
 .mobile-menu {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  inset: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   z-index: 1001 !important;
   background-color: #08101d !important;
-  background-image: radial-gradient(circle at 50% 20%, rgba(34,197,94,0.08), transparent 60%) !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s, visibility 0.3s;
-  overflow-y: auto;
+  transition: opacity 0.25s ease-out, visibility 0.25s ease-out;
+  overflow: hidden;
 }
 
 .mobile-menu.is-open {
@@ -821,81 +824,133 @@ textarea {
   pointer-events: auto !important;
 }
 
-.mobile-menu__panel {
-  position: relative;
-  min-height: 100%;
-  padding: 100px 32px 40px;
-  display: flex;
-  flex-direction: column;
-  max-width: 480px;
-  margin: 0 auto;
-  background: transparent;
+/* Subtle green glow at the top */
+.mobile-menu::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.12), transparent 70%);
+  pointer-events: none;
 }
 
+.mobile-menu__panel {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 90px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* Small brand mark at the top of the menu */
+.mobile-menu__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  opacity: 0.85;
+}
+
+.mobile-menu__brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), #38bdf8);
+  color: #05120a;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.mobile-menu__brand-name {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  color: var(--text);
+}
+
+/* Nav links */
 .mobile-menu__list {
   list-style: none;
-  margin: 0 0 32px;
+  margin: 0 0 24px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
 .mobile-menu__link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 4px;
+  display: block;
+  padding: 16px 0;
   color: var(--text);
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   transition: color 0.2s, padding-left 0.2s;
   text-decoration: none;
 }
 
 .mobile-menu__link:hover,
-.mobile-menu__link:focus {
+.mobile-menu__link:focus-visible {
   color: var(--primary);
-  padding-left: 8px;
+  padding-left: 6px;
 }
 
 .mobile-menu__link.active {
   color: var(--primary);
+  font-weight: 600;
 }
 
-.mobile-menu__link::after {
-  content: "→";
-  font-size: 1.1rem;
-  opacity: 0.4;
-  transition: opacity 0.2s, transform 0.2s;
+/* Green dot indicator for the active page */
+.mobile-menu__link.active::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  margin-right: 10px;
+  vertical-align: middle;
+  box-shadow: 0 0 8px var(--primary);
 }
 
-.mobile-menu__link:hover::after,
-.mobile-menu__link.active::after {
-  opacity: 1;
-  transform: translateX(4px);
-}
-
+/* CTA button */
 .mobile-menu__cta {
   width: 100%;
   justify-content: center;
-  padding: 16px !important;
-  font-size: 1rem !important;
-  margin-top: 20px;
+  padding: 14px !important;
+  font-size: 0.95rem !important;
+  margin-top: 8px;
 }
 
+/* Footer inside menu */
 .mobile-menu__footer {
   margin-top: auto;
-  padding-top: 32px;
+  padding-top: 24px;
   text-align: center;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .mobile-menu__footer p {
   margin: 0;
+  letter-spacing: 0.3px;
+}
+
+/* Body scroll lock while the menu is open — CRITICAL */
+/* Prevents the page underneath from scrolling. */
+body.menu-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
 }
 
 /* Show hamburger on mobile, hide desktop nav */
@@ -914,14 +969,18 @@ textarea {
   .brand__tagline {
     display: none;
   }
+  .brand__name {
+    font-size: 14px;
+  }
 }
 
+/* Small screen adjustments */
 @media (max-width: 380px) {
   .mobile-menu__link {
-    font-size: 1.3rem;
-    padding: 18px 4px;
+    font-size: 1rem;
+    padding: 14px 0;
   }
   .mobile-menu__panel {
-    padding: 90px 24px 32px;
+    padding: 80px 24px 24px;
   }
 }
