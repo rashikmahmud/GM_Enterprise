@@ -15,7 +15,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // 1. Close the menu whenever the route changes (user tapped a link)
+  // 1. Close the menu whenever the route changes (safety net for
+  //    back-button navigation, deep linking, etc.)
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
@@ -41,6 +42,18 @@ export default function Navbar() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
+
+  // Helper: called when any menu link is tapped.
+  // Always closes the menu. If the tapped link is the current page,
+  // Next.js won't navigate — so we also scroll to top for a nice UX.
+  const handleLinkClick = (href: string) => {
+    setMenuOpen(false);
+    const isSamePage =
+      href === "/" ? pathname === "/" : pathname === href;
+    if (isSamePage) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   return (
     <header className="site-header">
@@ -126,6 +139,7 @@ export default function Navbar() {
                     href={href}
                     className={`mobile-menu__link${isActive ? " active" : ""}`}
                     aria-current={isActive ? "page" : undefined}
+                    onClick={() => handleLinkClick(href)}
                   >
                     {label}
                   </Link>
@@ -137,6 +151,7 @@ export default function Navbar() {
           <Link
             href="/contact"
             className="btn btn--primary mobile-menu__cta"
+            onClick={() => handleLinkClick("/contact")}
           >
             Get a Quote
           </Link>
